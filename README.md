@@ -1,772 +1,320 @@
+<div align="center">
+
 # ⚙️ APEX CPU Pipeline Simulator
 
-### Out-of-Order CPU Pipeline Simulation in C
+### *Out-of-Order CPU Pipeline Simulation in C*
 
+> A cycle-by-cycle simulator where instructions execute out of order, branches make questionable decisions, and the ROB keeps everyone accountable.
+
+**💻 [GitHub Repository](https://github.com/MedlynJacob/APEX-CPU-Pipeline-Simulator)**
+
+<img src="https://readme-typing-svg.demolab.com?font=VT323&size=30&pause=1200&color=00D9FF&center=true&vCenter=true&width=700&lines=Booting+APEX...;Loading+Pipeline...;Initializing+ROB...;Predicting+Branches...;System+Ready" />
+
+![C](https://img.shields.io/badge/C-Programming-blue?style=for-the-badge)
+![CPU Architecture](https://img.shields.io/badge/CPU-Out--of--Order-orange?style=for-the-badge)
+![Pipeline](https://img.shields.io/badge/Pipeline-Simulation-purple?style=for-the-badge)
+![Branch Prediction](https://img.shields.io/badge/Branch-Prediction-red?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Operational-success?style=for-the-badge)
+
+</div>
 ```text
-┌──────────────────────────────────────────────┐
-│        APEX CPU INITIALIZATION               │
-├──────────────────────────────────────────────┤
-│                                              │
-│  Instructions:          LOADING...           │
-│  Register Renaming:     ENABLED              │
-│  Reservation Stations:  ONLINE               │
-│  Reorder Buffer:        WATCHING EVERYTHING   │
-│  Branch Predictor:      MAYBE RIGHT           │
-│                                              │
-└──────────────────────────────────────────────┘
-```
+     █████╗ ██████╗ ███████╗██╗  ██╗
+    ██╔══██╗██╔══██╗██╔════╝╚██╗██╔╝
+    ███████║██████╔╝█████╗   ╚███╔╝
+    ██╔══██║██╔═══╝ ██╔══╝   ██╔██╗
+    ██║  ██║██║     ███████╗██╔╝ ██╗
+    ╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
 
-> **SYSTEM STATUS: CPU HAS LOST THE PLOT**
+    $ apex boot
 
-Instructions are arriving faster than they can retire.
+    Initializing CPU...
+    Loading instruction memory...
+    Initializing register files...
+    Initializing reorder buffer...
+    Initializing reservation stations...
+    Initializing load/store queue...
+    Initializing branch predictor...
 
-Branches are being predicted.
-Registers are being renamed.
-Instructions are executing out of order.
-The ROB is keeping receipts.
+    CPU Ready.
 
-Welcome to **APEX** — a cycle-by-cycle simulator of an out-of-order CPU pipeline built in C.
-
----
-
-## > what is this?
-
-APEX is a **C-based out-of-order CPU pipeline simulator** designed to model how modern processors handle instruction execution beyond simple sequential processing.
-
-Instead of executing every instruction strictly in program order, the simulator models mechanisms that allow instructions to:
-
-* Execute when their operands are ready
-* Use register renaming to avoid false dependencies
-* Wait in reservation stations
-* Execute through different functional units
-* Forward results between pipeline stages
-* Maintain program-order retirement using a Reorder Buffer
-* Handle memory operations through a Load/Store Queue
-* Speculate on branches
-* Recover from branch mispredictions
-
-The simulator can be run **cycle by cycle**, making the internal state of the processor visible as instructions move through the pipeline.
-
----
-
-## > mission status
-
-```text
-┌────────────────────────────────────────────────┐
-│                 APEX STATUS                    │
-├────────────────────────────────────────────────┤
-│                                                │
-│  Language              C                       │
-│  Execution Model       Out-of-Order            │
-│  Register Renaming     ✓                       │
-│  Reservation Stations  ✓                       │
-│  Reorder Buffer        ✓                       │
-│  Load/Store Queue      ✓                       │
-│  Data Forwarding       ✓                       │
-│  Speculative Execution ✓                       │
-│  Branch Prediction     ✓                       │
-│  Pipeline Recovery     ✓                       │
-│  Cycle Simulation      ✓                       │
-│                                                │
-└────────────────────────────────────────────────┘
+> CPU HAS LOST THE PLOT
 ```
 
 ---
 
-## > architecture
+# > what is this?
 
-The simulator models the major structures involved in an out-of-order processor.
+**APEX** is a C-based **out-of-order CPU pipeline simulator** that models how instructions move through a modern-style processor.
+
+Instead of simply executing instructions one after another, APEX models:
 
 ```text
-                    ┌──────────────┐
-                    │   Program    │
-                    │    Memory    │
-                    └──────┬───────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │   Fetch      │
-                    │   F1 / F2    │
-                    └──────┬───────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │ Decode /     │
-                    │ Rename       │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ Reservation   │
-                    │   Stations    │
-                    └──────┬───────┘
-                           │
-             ┌─────────────┼─────────────┐
-             ▼             ▼             ▼
-        ┌─────────┐   ┌─────────┐   ┌─────────┐
-        │ Integer │   │ Multiply│   │ Memory  │
-        │   FU    │   │   FU    │   │   FU    │
-        └────┬────┘   └────┬────┘   └────┬────┘
-             │             │             │
-             └─────────────┼─────────────┘
-                           ▼
-                    ┌──────────────┐
-                    │     ROB      │
-                    │  In-Order    │
-                    │   Commit     │
-                    └──────────────┘
+Fetch → Decode/Rename → Dispatch → Issue → Execute → Forward → Commit
+```
+
+Instructions can execute when their operands are ready while the **ROB** ensures they eventually retire in program order.
+
+---
+
+# > architecture
+
+```text
+                  ┌─────────────┐
+                  │    FETCH    │
+                  └──────┬──────┘
+                         ↓
+                ┌─────────────────┐
+                │ DECODE / RENAME │
+                └────────┬────────┘
+                         ↓
+                ┌─────────────────┐
+                │  RESERVATION    │
+                │    STATIONS     │
+                └────────┬────────┘
+                         ↓
+           ┌─────────────┼─────────────┐
+           ↓             ↓             ↓
+      ┌─────────┐   ┌─────────┐   ┌─────────┐
+      │ Integer │   │  Mul FU  │   │ Memory  │
+      │   FU    │   │          │   │   FU    │
+      └────┬────┘   └────┬────┘   └────┬────┘
+           └─────────────┼─────────────┘
+                         ↓
+                  ┌─────────────┐
+                  │     ROB     │
+                  │   COMMIT    │
+                  └─────────────┘
 ```
 
 ---
 
-## > processor organization
-
-### Architectural Registers
-
-The simulator maintains an architectural register file alongside renamed physical registers.
+# > core features
 
 ```text
-Architectural Registers
-        │
-        ▼
-      RAT
-        │
-        ▼
-Physical Register File
-```
-
-The **Register Alias Table (RAT)** tracks the current physical register associated with each architectural register.
-
-This allows multiple instructions to have independent physical destinations while preserving the architectural view of the program.
-
----
-
-### > reservation stations
-
-Instructions wait in reservation stations until their required operands become available.
-
-The simulator maintains separate reservation structures for:
-
-* Integer operations
-* Multiply operations
-
-Instructions can therefore wait independently rather than blocking the entire pipeline.
-
-```text
-Instruction
-     │
-     ▼
-Reservation Station
-     │
-     ├── Source Ready? ──► Execute
-     │
-     └── Source Missing? ─► Wait
+✓ Out-of-order execution
+✓ Register renaming
+✓ Reservation stations
+✓ Reorder Buffer (ROB)
+✓ Load/Store Queue (LSQ)
+✓ Data forwarding
+✓ Multi-cycle execution
+✓ Speculative execution
+✓ Branch prediction
+✓ Misprediction recovery
+✓ Cycle-by-cycle pipeline visualization
 ```
 
 ---
 
-### > reorder buffer
+# > speculation mode
 
-The **Reorder Buffer (ROB)** allows instructions to execute out of order while still committing their architectural effects in program order.
+Branches are where things get interesting.
+
+APEX includes:
 
 ```text
-Execute Out of Order
-        │
-        ▼
-┌─────────────────┐
-│      ROB        │
-│                 │
-│  I1 → DONE      │
-│  I2 → DONE      │
-│  I3 → EXEC      │
-│  I4 → WAIT      │
-└────────┬────────┘
-         │
-         ▼
-Commit In Order
+Branch Target Buffer      → BTB
+Call Target Predictor     → CTP
+Return Address Prediction → RAP Stack
 ```
 
-This separates:
-
-**execution order** from **retirement order**.
-
----
-
-## > memory subsystem
-
-Memory instructions are tracked through a **Load/Store Queue (LSQ)**.
-
-The simulator models:
-
-* Load operations
-* Store operations
-* Memory addresses
-* Memory dependencies
-* Multi-stage memory execution
-
-The memory functional unit operates across multiple pipeline stages rather than completing a memory operation instantly.
-
----
-
-## > execution model
-
-The simulator advances one processor cycle at a time.
-
-A cycle processes the pipeline through stages including:
+When a prediction is wrong:
 
 ```text
-Data Forwarding
-      ↓
-ROB Commit
-      ↓
-Memory Execution
-      ↓
-Multiply Execution
-      ↓
-Integer Execution
-      ↓
-Instruction Issue
-      ↓
-Rename / Dispatch
-      ↓
-Decode / Rename
-      ↓
-Fetch
-      ↓
-Next Cycle
+Branch
+  ↓
+Prediction
+  ↓
+Execute
+  ↓
+Wrong?
+  ↓
+FLUSH → RESTORE → RECOVER
+  ↓
+Continue
 ```
 
-Different functional units can therefore be active simultaneously.
+The simulator restores speculative state and resumes execution from the correct path.
 
 ---
 
-## > multi-cycle execution
+# > execution model
 
-Not every instruction takes the same amount of time.
-
-The simulator models dedicated execution paths for different instruction classes.
+Different functional units operate with different execution latencies:
 
 ```text
+INTEGER      ████
+MULTIPLY     ████████████
+MEMORY       ████████
+```
+
+The simulator advances **one cycle at a time**, allowing the internal state of the processor to be inspected throughout execution.
+
+```text
+Cycle 12
+
+F1       → ...
+F2       → ...
+D1/RN    → ...
+RN2/DIS  → ...
+IntFU    → ...
+MulFU    → ...
+MemFU    → ...
+
+ROB      → 2 / 16
+LSQ      → 0 / 6
+```
+
+---
+
+# > instruction set
+
+APEX supports arithmetic, logical, memory, and control-flow instructions.
+
+```text
+ARITHMETIC
+ADD  SUB  MUL  ADDL  SUBL
+
+LOGICAL
+AND  OR  XOR  CML  CMP
+
+MEMORY
+LOAD  STORE
+
+CONTROL FLOW
+MOVC  JUMP  JAL  JALP  RET
+BZ  BNZ  BP  BN
+
+CONTROL
+NOP  HALT
+```
+
+---
+
+# > technology stack
+
+```text
+LANGUAGE
+────────
+C
+
+CPU / ARCHITECTURE
+──────────────────
+Out-of-Order Execution
+Register Renaming
+Reservation Stations
+Reorder Buffer
+Load/Store Queue
+
+EXECUTION
+─────────
 Integer FU
-──────────
-1-stage execution
-
 Multiply FU
-───────────
-3-stage execution
-
 Memory FU
-──────────
-2-stage execution
-```
+Data Forwarding
 
-This allows the simulator to demonstrate how instructions overlap while different functional units operate concurrently.
+SPECULATION
+───────────
+BTB
+Call Target Predictor
+Return Address Stack
+Misprediction Recovery
 
----
-
-## > data forwarding
-
-Waiting instructions do not necessarily need to wait until a result reaches the architectural register file.
-
-The simulator implements **data forwarding** so completed results can be propagated to dependent instructions.
-
-```text
-Instruction A
-     │
-     │ result
-     ▼
-Forwarding
-     │
-     ├──────────────► Instruction B
-     │
-     └──────────────► Instruction C
-```
-
-This models an important mechanism for reducing unnecessary pipeline stalls.
-
----
-
-## > speculative execution
-
-Branches introduce uncertainty.
-
-Instead of waiting for every branch to resolve before fetching subsequent instructions, the simulator can speculate on the direction or target of control-flow instructions.
-
-When speculation is incorrect, younger instructions are flushed and the processor state is restored.
-
-```text
-             Branch
-               │
-        ┌──────┴──────┐
-        ▼             ▼
-     Predict A      Predict B
-        │             │
-        └──────┬──────┘
-               ▼
-          Branch Resolves
-               │
-        ┌──────┴──────┐
-        ▼             ▼
-      Correct        Wrong
-        │             │
-        │          Flush + Recover
-        │             │
-        └──────┬──────┘
-               ▼
-          Continue
+TOOLS
+─────
+GCC
+Git
+Linux / macOS
 ```
 
 ---
 
-## > branch prediction
-
-When enabled, the simulator maintains several structures for control-flow prediction.
-
-### Branch Target Buffer — BTB
-
-The BTB stores information about previously encountered conditional branches, including:
-
-* Branch PC
-* Target PC
-* Branch history
-* LRU information
-
-### Call Target Predictor — CTP
-
-The CTP tracks targets for call-style control-flow instructions.
-
-### Return Address Prediction
-
-A return-address stack is used to predict return targets.
-
-Together, these structures allow the fetch stage to continue speculatively rather than waiting for every control-flow instruction to resolve.
-
----
-
-## > branch recovery
-
-A wrong prediction is not the end of the simulation.
-
-When a misprediction is detected, the simulator can restore speculative processor state, including:
-
-* RAT state
-* Condition-code RAT state
-* Free physical registers
-* ROB state
-* Younger instructions
-* Pipeline state
-
-The processor then resumes execution from the correct path.
+# > project structure
 
 ```text
-Wrong Prediction
-       │
-       ▼
-Branch Resolves
-       │
-       ▼
-Misprediction Detected
-       │
-       ▼
-Restore Speculative State
-       │
-       ▼
-Flush Younger Instructions
-       │
-       ▼
-Correct PC
-       │
-       ▼
-Continue Execution
+APEX-CPU-Pipeline-Simulator/
+│
+├── apex_cpu.c       # CPU & pipeline implementation
+├── apex_cpu.h       # CPU structures & definitions
+├── main.c           # CLI & simulator entry point
+│
+├── input.asm        # Sample program
+├── input1.asm       # Additional test program
+│
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-## > supported instructions
+# > run it
 
-The simulator supports a range of arithmetic, logical, memory, and control-flow instructions.
-
-### Arithmetic / Logical
-
-```text
-ADD
-SUB
-MUL
-ADDL
-SUBL
-AND
-OR
-XOR
-```
-
-### Comparison / Conditional
-
-```text
-CML
-CMP
-BZ
-BNZ
-BP
-BN
-```
-
-### Memory
-
-```text
-LOAD
-STORE
-```
-
-### Control Flow
-
-```text
-MOVC
-JUMP
-JAL
-JALP
-RET
-```
-
-### Pipeline Control
-
-```text
-NOP
-HALT
-```
-
----
-
-## > cycle-by-cycle simulation
-
-One of the main goals of the simulator is to make the pipeline state observable.
-
-For every cycle, the simulator can display information such as:
-
-```text
-Cycle: 12
-PC:    4040
-
-F1:       ...
-F2:       ...
-D1/RN:    ...
-RN2/DIS:  ...
-IntFU:    ...
-MulFU:    ...
-MemFU:    ...
-
-ROB:  2/16
-LSQ:  0/6
-```
-
-It can also expose internal processor state including:
-
-* Register Alias Table
-* Architectural Register File
-* Reservation Stations
-* Reorder Buffer
-* Load/Store Queue
-* Predictor state
-* Pipeline stalls
-* Pipeline flushes
-
-This makes it possible to follow an instruction from **fetch → rename → issue → execute → forward → commit**.
-
----
-
-## > running the simulator
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/MedlynJacob/APEX-CPU-Pipeline-Simulator.git
-cd APEX-CPU-Pipeline-Simulator
-```
-
-### 2. Compile
+### Compile
 
 ```bash
 gcc -Wall -Wextra -o apex_sim main.c apex_cpu.c
 ```
 
-### 3. Run without branch prediction
+### Run
 
 ```bash
 ./apex_sim input.asm
 ```
 
-### 4. Run with branch prediction
+### Enable branch prediction
 
 ```bash
 ./apex_sim input.asm 1
 ```
 
-The second argument enables the simulator's branch-prediction mechanisms.
-
----
-
-## > simulator commands
-
-Once the simulator starts, commands can be entered interactively.
-
-```text
-initialize
-```
-
-Initialize the CPU state.
+### Interactive commands
 
 ```text
 simulate
-```
-
-Run the simulation for the default number of cycles.
-
-```text
 simulate 10
-```
-
-Run exactly 10 cycles.
-
-```text
 display
-```
-
-Display the current processor and pipeline state.
-
-```text
 single_step
-```
-
-Advance the processor by one cycle.
-
-```text
 setmem <address> <value>
-```
-
-Set a value directly in data memory.
-
-```text
-setmem <file>
-```
-
-Load memory values from a file.
-
-```text
 exit
 ```
 
-Terminate the simulator.
-
 ---
 
-## > example program
-
-The repository includes sample assembly programs for testing the simulator.
-
-Example:
-
-```asm
-MOVC R0 #2
-MOVC R1 #3
-JALP R2 #12
-MUL R0 R1 R0
-HALT
-NOP
-RET R2
-MOVC R1 #10
-ADD R1 R1 R1
-HALT
-```
-
-Run it with:
-
-```bash
-./apex_sim input.asm
-```
-
-Then inspect execution using:
-
-```text
-simulate
-display
-single_step
-```
-
----
-
-## > project structure
-
-```text
-APEX-CPU-Pipeline-Simulator/
-│
-├── apex_cpu.c       # CPU implementation and pipeline logic
-├── apex_cpu.h       # CPU structures, constants, and declarations
-├── main.c           # CLI interface and simulator entry point
-│
-├── input.asm        # Sample assembly program
-├── input1.asm       # Additional test program
-│
-├── README.md
-├── .gitignore
-│
-└── apex_sim         # Local executable (ignored by Git)
-```
-
----
-
-## > technical stack
-
-```text
-Language
-└── C
-
-Core Concepts
-├── Out-of-Order Execution
-├── Register Renaming
-├── Reservation Stations
-├── Reorder Buffer
-├── Load/Store Queue
-├── Speculative Execution
-├── Branch Prediction
-├── Data Forwarding
-├── Pipeline Recovery
-└── In-Order Retirement
-
-Development
-├── GCC
-├── Git
-└── Linux / macOS / Unix-like environments
-```
-
----
-
-## > project highlights
-
-```text
-[01] OUT-OF-ORDER EXECUTION
-     Instructions can execute as operands become ready.
-
-[02] REGISTER RENAMING
-     Physical registers reduce false dependencies.
-
-[03] SPECULATIVE EXECUTION
-     The pipeline continues execution across predicted branches.
-
-[04] BRANCH RECOVERY
-     Incorrect speculation triggers state restoration and flushing.
-
-[05] MULTI-CYCLE FUNCTIONAL UNITS
-     Integer, multiply, and memory operations have
-     different execution latencies.
-
-[06] DATA FORWARDING
-     Results can be forwarded directly to dependent instructions.
-
-[07] CYCLE VISIBILITY
-     Internal processor state can be inspected after each cycle.
-```
-
----
-
-## > why build a CPU simulator?
-
-Because looking at:
-
-```text
-ADD R1 R2 R3
-```
-
-and knowing what the instruction *means* is very different from understanding what the processor actually has to do with it.
-
-APEX was built to explore the machinery underneath instruction execution:
-
-```text
-Instruction
-    ↓
-Fetch
-    ↓
-Decode
-    ↓
-Rename
-    ↓
-Dispatch
-    ↓
-Wait for operands
-    ↓
-Issue
-    ↓
-Execute
-    ↓
-Forward
-    ↓
-Retire
-```
-
-And sometimes:
-
-```text
-        ↓
-   "That branch was wrong."
-        ↓
-      FLUSH
-        ↓
-      RESTORE
-        ↓
-      TRY AGAIN
-```
-
----
-
-## > status
-
-```text
-┌──────────────────────────────────────────────┐
-│               PROJECT STATUS                 │
-├──────────────────────────────────────────────┤
-│                                              │
-│  CPU Pipeline              ✓ IMPLEMENTED     │
-│  Register Renaming         ✓ IMPLEMENTED     │
-│  Reservation Stations      ✓ IMPLEMENTED     │
-│  Reorder Buffer            ✓ IMPLEMENTED     │
-│  Load/Store Queue          ✓ IMPLEMENTED     │
-│  Data Forwarding           ✓ IMPLEMENTED     │
-│  Multi-Cycle Execution     ✓ IMPLEMENTED     │
-│  Branch Prediction         ✓ IMPLEMENTED     │
-│  Speculative Execution     ✓ IMPLEMENTED     │
-│  Misprediction Recovery    ✓ IMPLEMENTED     │
-│  Cycle-by-Cycle Debugging  ✓ IMPLEMENTED     │
-│                                              │
-│  STATUS: OPERATIONAL                        │
-│                                              │
-└──────────────────────────────────────────────┘
-```
-
----
-
-## > final transmission
+# > mission status
 
 ```text
 APEX CPU SIMULATOR
 ────────────────────────────────────
 
-Instructions don't always execute
-in the order you wrote them.
+Pipeline                 ✓ ONLINE
+Register Renaming        ✓ ONLINE
+Reservation Stations     ✓ ONLINE
+Reorder Buffer           ✓ ONLINE
+Memory Pipeline          ✓ ONLINE
+Data Forwarding          ✓ ONLINE
+Branch Prediction        ✓ ONLINE
+Speculative Execution    ✓ ONLINE
+Recovery                 ✓ ONLINE
+Cycle Simulation         ✓ ONLINE
 
-That's kind of the point.
-
-        FETCH
-          ↓
-        RENAME
-          ↓
-        DISPATCH
-          ↓
-        EXECUTE ──────┐
-          ↓           │
-        FORWARD       │
-          ↓           │
-        COMMIT ◄──────┘
-
-────────────────────────────────────
-SYSTEM STATUS: OPERATIONAL
-────────────────────────────────────
+STATUS: OPERATIONAL
 ```
 
-Built in C to explore the mechanics of out-of-order CPU execution.
+---
+
+<div align="center">
+
+### ☕ Built with C, CPU architecture, and an unreasonable number of pipeline states.
+
+```bash
+> execute
+> speculate
+> mispredict
+> recover
+> repeat
+
+Connection terminated.
+```
+
+</div>
+
