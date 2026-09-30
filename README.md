@@ -17,6 +17,7 @@
 ![Status](https://img.shields.io/badge/Status-Operational-success?style=for-the-badge)
 
 </div>
+
 ```text
      █████╗ ██████╗ ███████╗██╗  ██╗
     ██╔══██╗██╔══██╗██╔════╝╚██╗██╔╝
@@ -37,8 +38,8 @@
 
     CPU Ready.
 
-> CPU HAS LOST THE PLOT
-```
+    > CPU HAS LOST THE PLOT
+    
 
 ---
 
