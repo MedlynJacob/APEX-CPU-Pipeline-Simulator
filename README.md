@@ -6,7 +6,7 @@
 
 > A cycle-by-cycle simulator where instructions execute out of order, branches make questionable decisions, and the ROB keeps everyone accountable.
 
-**💻 [GitHub Repository](https://github.com/MedlynJacob/APEX-CPU-Pipeline-Simulator)**
+💻 [GitHub Repository](https://github.com/MedlynJacob/APEX-CPU-Pipeline-Simulator)
 
 <img src="https://readme-typing-svg.demolab.com?font=VT323&size=30&pause=1200&color=00D9FF&center=true&vCenter=true&width=700&lines=Booting+APEX...;Loading+Pipeline...;Initializing+ROB...;Predicting+Branches...;System+Ready" />
 
@@ -39,7 +39,7 @@
     CPU Ready.
 
     > CPU HAS LOST THE PLOT
-    
+```
 
 ---
 
@@ -116,7 +116,7 @@ APEX includes:
 ```text
 Branch Target Buffer      → BTB
 Call Target Predictor     → CTP
-Return Address Prediction → RAP Stack
+Return Address Stack      → RAP
 ```
 
 When a prediction is wrong:
@@ -145,7 +145,9 @@ Different functional units operate with different execution latencies:
 
 ```text
 INTEGER      ████
+
 MULTIPLY     ████████████
+
 MEMORY       ████████
 ```
 
@@ -318,4 +320,3 @@ Connection terminated.
 ```
 
 </div>
-
